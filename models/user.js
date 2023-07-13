@@ -13,8 +13,7 @@ const userSchema = new Schema({
   },
   // salt and pepper hash
   salt: {
-    type: String,
-    required: true
+    type: String
   },
   password: {
     type: String,
@@ -50,6 +49,24 @@ userSchema.pre("save", function (next) {
 
     next();
 });
+
+userSchema.static('matchPassword', async function(email, password) {
+  const user = await this.findOne({ email });
+  if (!user) throw new Error('User Not found');
+
+  const salt = user.salt;
+  const hashedPassword = user.password;
+
+  const userProvidedHash = createHmac('sha256', salt)
+  .update(password)
+  .digest("hex");
+
+  if (hashedPassword !== userProvidedHash) {
+    throw new Error('Incorrect Password');
+  }
+
+  return user;
+})
 
 const User = model('user', userSchema);
 module.exports = User;
